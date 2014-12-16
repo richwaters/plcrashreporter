@@ -684,7 +684,7 @@ static plcrash_error_t plcr_live_report_callback (plcrash_async_thread_state_t *
  *
  * @todo Implement in-memory, rather than requiring writing of the report to disk.
  */
-- (NSData *) generateLiveReportWithThread: (thread_t) thread error: (NSError **) outError {
+- (NSData *) generateLiveReportWithThread: (thread_t) thread error: (NSError **) outError exception:(NSException *)e {
     plcrash_log_writer_t writer;
     plcrash_async_file_t file;
     plcrash_error_t err;
@@ -714,7 +714,9 @@ static plcrash_error_t plcr_live_report_callback (plcrash_async_thread_state_t *
 
     signal_info.bsd_info = &bsd_signal_info;
     signal_info.mach_info = NULL;
-    
+
+    if( e )  plcrash_log_writer_set_exception(&writer, e);  // R.A.W.
+
     /* Write the crash log using the already-initialized writer */
     if (thread == pl_mach_thread_self()) {
         struct plcr_live_report_context ctx = {
@@ -761,6 +763,10 @@ cleanup:
     return data;
 }
 
+- (NSData *) generateLiveReportWithThread: (thread_t) thread error: (NSError **) outError {
+    return [self generateLiveReportWithThread:thread error:outError exception:nil] ;
+}
+
 
 /**
  * Generate a live crash report, without triggering an actual crash condition. This may be used to log
@@ -788,6 +794,11 @@ cleanup:
  */
 - (NSData *) generateLiveReportAndReturnError: (NSError **) outError {
     return [self generateLiveReportWithThread: pl_mach_thread_self() error: outError];
+}
+
+
+- (NSData *) generateLiveReportAndReturnError: (NSError **) outError  exception:(NSException *)e {
+    return [self generateLiveReportWithThread: pl_mach_thread_self() error:outError exception:e];
 }
 
 
